@@ -547,7 +547,9 @@ def approveVolunteer(request):
                     # print(i.uploadcvs)
                     AutoClean.clean_data(i.uploadcvs)
                     # print(filename)
-
+                    redirect('clean')
+            redirect('clean')
+        redirect('clean')
 
     else:
         form = UploadData()
@@ -567,30 +569,6 @@ def approveVolunteer(request):
         }
 
     return render(request, template_name='manage.html', context=to_html)
-
-
-def done(request):
-    location = models.Location()
-
-    data = pd.read_csv("C:\\Users\\jr\\Documents\\FYP\\Data\\test.csv", encoding='latin1')
-
-    # print specified columns
-    specific_columns = data[['REGION', 'SCHOOL NAME', 'ENROLMENT', 'ALL TEACHERS', 'PTR']]
-
-    # group by
-    grp = specific_columns.groupby('REGION')
-
-    average = grp.mean()
-
-    for index, row in average:
-        # location.region= row["SCHOOL NAME"]
-        # location.council = row["SCHOOL NAME"]
-        location.enrollment = row["ENROLMENT"]
-        location.teacher = row["ALL TEACHERS"]
-        location.ptr = row["PTR"]
-        location.save()
-
-    return render(request, template_name='test.html', context=None)
 
 
 # autoselect the location for the volunteer
@@ -646,6 +624,7 @@ class UserFormView(View):
         return render(request, 'signup-form.html', {'form': form})
 
 
+# signup proceed page
 class UserCompleteSignUp(View):
     form_class = UserMoreInfo
 
@@ -767,7 +746,7 @@ class Pdf(View):
 class AutoClean:
     @staticmethod
     def clean_data(filepath):
-        global new_data, group_data, save_file
+        global new_data, group_data
         path = "media/documents/"
 
         # var = input("Please enter the file name for data cleaning: ")
@@ -781,24 +760,42 @@ class AutoClean:
 
         if check_null:
             # data has a null or empty field
+            # then interpolate estimates
             new_data = data1.interpolate()
             group_data = new_data.groupby('REGION').mean()
-            save_file = group_data.to_csv(path + 'test2.csv')
+            group_data.to_csv(path + 'test2.csv')
             handle()
         else:
             # data has no null or empty field
             group_data = data1.groupby('REGION').mean()
-            save_file = group_data.to_csv(path + 'test2.csv')
+            group_data.to_csv(path + 'test2.csv')
             handle()
 
 
-# read upload
+# read, upload, update csv data
 def handle():
+    global v
     if models.ToChart.objects.exists():
+        global row_id, num
         print('data already loaded...exiting.')
-        print('first delete present data')
-        return
+        print('updating it')
+        # retrieve the data
+        row_id = []
+        num = 0
+        data = models.ToChart.objects.all()
+        # loop to append ids for incremental
+        for c in data:
+            row_id.append(c.id)
 
+        for row in DictReader(open('media/documents/test2.csv')):
+            data = models.ToChart.objects.get(id=row_id[num])
+            data.region = row['REGION']
+            data.enrolment = row['ENROLMENT']
+            data.teacher = row['ALL TEACHERS']
+            data.ptr = row['PTR']
+            data.save()
+            num = num + 1
+        return
     print("Loading data available")
     for row in DictReader(open('media/documents/test2.csv')):
         data = models.ToChart()
@@ -812,6 +809,7 @@ def handle():
         data.save()
 
 
+# update user status i.e approve 1 or 0
 def updateStatus(request, full_name):
     global data
 

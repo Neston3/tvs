@@ -29,7 +29,6 @@ urlpatterns = [
     path('home/status', view.status_view, name='status'),
     path('home/profile', view.login_required(ProfileView.as_view()), name='profile'),
     path('admin/clean', view.approveVolunteer, name='clean'),
-    path('admin/clean/done', view.done, name='done'),
     path('signup/', view.UserFormView.as_view(), name='signup'),
     path('signup/complete', view.UserCompleteSignUp.as_view(), name='complete_signup'),
     path('accounts/', include('django.contrib.auth.urls'), name='login'),
