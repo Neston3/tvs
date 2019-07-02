@@ -125,6 +125,9 @@ def index(request, chartID='container', chart_type='column', chart_height=600):
     predict = PTRDataPrediction()
     prediction = predict.estimatePrediction()
 
+    user = models.User.objects.all().count()
+    volunteer = models.Volunteer.objects.all().count()
+
     global x, y, z
     data = ChartData.check_valve_data()
 
@@ -184,7 +187,9 @@ def index(request, chartID='container', chart_type='column', chart_height=600):
         'xAxis': xAxis, 'yAxis': yAxis,
         'ptr': ptr_data, 'value': filter_ptr,
         'sample': multiple_pair,
-        'predict': int(prediction)
+        'predict': int(prediction),
+        'user_no': user,
+        'volunteer_no': volunteer
     }
 
     return render(request, template_name='index.html', context=to_html)
@@ -194,6 +199,9 @@ def index(request, chartID='container', chart_type='column', chart_height=600):
 def home(request, chartID='container', chart_type='column', chart_height=600):
     global x, y, z
     data = ChartData.check_valve_data()
+
+    user = models.User.objects.all().count()
+    volunteer = models.Volunteer.objects.all().count()
 
     # load prediction
     predict = PTRDataPrediction()
@@ -259,7 +267,9 @@ def home(request, chartID='container', chart_type='column', chart_height=600):
         'ptr': ptr_data, 'value': filter_ptr,
         'sample': multiple_pair,
         'username': username,
-        'predict': int(prediction)
+        'predict': int(prediction),
+        'user_no': user,
+        'volunteer_no': volunteer
     }
 
     return render(request, template_name='home.html', context=to_html)
@@ -291,7 +301,7 @@ class ProfileView(View):
             'username': username,
             'home': home,
             'phone': phone,
-            'role': role
+            'role': role,
         }
 
         return render(request, 'profile.html', context=to_html)
@@ -299,14 +309,24 @@ class ProfileView(View):
     def post(self, request):
         username = request.user.id
         data = models.Users.objects.get(user=username)
+        data1 = models.User.objects.get(username=data.user)
         if request.POST:
             login_data = request.POST.dict()
             firstname = login_data.get("firstname")
+            lastname = login_data.get("lastname")
+            user_name = login_data.get("username")
+            email = login_data.get("email")
             name = login_data.get("home")
+            phone = login_data.get("phone")
+            data.phone_number = phone
             data.home_address = name
-            print(name)
-            data.save(['home_address'])
-            return redirect('profile')
+            data1.email = email
+            data1.username = user_name
+            data1.last_name = lastname
+            data1.first_name = firstname
+            data.save()
+            data1.save()
+        return redirect('profile')
 
 
 def user_status(request):
@@ -471,10 +491,15 @@ def approveVolunteer(request):
     volunteer = models.Volunteer.objects.all()
     files = models.UploadFileCvs.objects.all()
 
+    # queries for all education level
     cert = models.Volunteer.objects.filter(certificate='Certificate level')
+    cert1 = models.Volunteer.objects.filter(certificate='Certificate level', status_update=str(1))
     dipl = models.Volunteer.objects.filter(certificate='Diploma level')
+    dipl1 = models.Volunteer.objects.filter(certificate='Diploma level', status_update=str(1))
     degr = models.Volunteer.objects.filter(certificate='Degree level')
+    degr1 = models.Volunteer.objects.filter(certificate='Degree level', status_update=str(1))
     mast = models.Volunteer.objects.filter(certificate='Masters level')
+    mast1 = models.Volunteer.objects.filter(certificate='Masters level', status_update=str(1))
 
     paginator = Paginator(files, 5)
 
@@ -532,9 +557,13 @@ def approveVolunteer(request):
             'file': files,
             'page': page_range,
             'cert': cert,
+            'cert1': cert1,
             'dipl': dipl,
+            'dipl1': dipl1,
             'degr': degr,
-            'mast': mast
+            'degr1': degr1,
+            'mast': mast,
+            'mast1': mast1
         }
 
     return render(request, template_name='manage.html', context=to_html)
@@ -762,9 +791,9 @@ class AutoClean:
             save_file = group_data.to_csv(path + 'test2.csv')
             handle()
 
-#read upload
-def handle():
 
+# read upload
+def handle():
     if models.ToChart.objects.exists():
         print('data already loaded...exiting.')
         print('first delete present data')
@@ -812,8 +841,10 @@ def updateStatus(request, full_name):
     # return JsonResponse(data)
 
 
+# manage specific applicant i.e. certificate, diploma
+@user_passes_test(lambda u: u.is_superuser)
 def manage_applicant(request, certificate):
-    volunteer = models.Volunteer.objects.filter(certificate=certificate).all()
+    volunteer = models.Volunteer.objects.filter(certificate=certificate).order_by('status_update').all()
 
     to_html = {
         'applicant': volunteer

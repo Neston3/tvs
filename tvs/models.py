@@ -7,9 +7,9 @@ from django.db import models
 
 # used
 class Volunteer(models.Model):
-    username = models.CharField(max_length=10, null=False)
-    full_name = models.CharField(max_length=50, null=False)
-    location = models.CharField(max_length=10, null=False)
+    username = models.CharField(max_length=50, null=False)
+    full_name = models.CharField(max_length=100, null=False)
+    location = models.CharField(max_length=100, null=False)
     contact = models.IntegerField(default=0)
     carrier = models.TextField()
     experience = models.TextField()
